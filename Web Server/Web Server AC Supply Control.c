@@ -3,8 +3,8 @@
 #include <WiFi.h>
 
 // Replace with your network credentials
-const char* ssid = "STEMINSPIRE -_- 2.4G";
-const char* password = "stem@123";
+const char* ssid = "Enter Your Wifi";
+const char* password = "Enter Password";
 
 // Set web server port number to 80
 WiFiServer server(80);
