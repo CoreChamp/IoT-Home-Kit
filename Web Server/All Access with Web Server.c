@@ -1,0 +1,437 @@
+
+// Load Wi-Fi library
+#include <WiFi.h>
+#include <ESPmDNS.h>
+
+#include <DHT.h>
+DHT dht(4, DHT11);
+
+// Replace with your network credentials
+const char* ssid = "Enter wifi Name";
+const char* password = "Enter Password";
+
+// Set web server port number to 80
+WiFiServer server(80);
+
+int sensor_pin = 2; 
+int pinStateCurrent   = LOW;  // current state of pin
+int pinStatePrevious  = LOW;  // previous state of pin
+String Message;
+String output2State = "Motion Ended";
+
+
+// Variable to store the HTTP request
+String header;
+
+// Auxiliar variables to store the current output state
+String output19State = "off";
+String output18State = "off";
+
+// Assign output variables to GPIO pins
+const int output19 = 19;
+const int output18 = 18;
+
+// Current time
+unsigned long currentTime = millis();
+// Previous time
+unsigned long previousTime = 0; 
+// Define timeout time in milliseconds (example: 2000ms = 2s)
+const long timeoutTime = 2000;
+
+
+
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+
+float humi;
+float tempC;
+float tempF;
+
+static const uint8_t  PROGMEM image_data_20190410_114707[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0xff, 0xff, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xff, 0xff, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xcf, 0xf9, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0x87, 0x80, 0xff, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0xff, 0x87, 0x00, 0xff, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0xff, 0xc7, 0x01, 0xff, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0xff, 0xe2, 0x03, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xe2, 0x03, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xf3, 0x8f, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xff, 0xf1, 0xbf, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xc0, 0xf9, 0xf0, 0x3f, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0x00, 0x38, 0xc0, 0x1f, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x3f, 0xfe, 0x00, 0x00, 0x00, 0x0f, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x3f, 0xfc, 0x00, 0x00, 0x00, 0x07, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x3f, 0xfc, 0x00, 0x00, 0x00, 0x07, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xfc, 0x00, 0x00, 0x00, 0x07, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x03, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x03, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x03, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x03, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x01, 0xff, 0x80, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x7c, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x7f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x3f, 0xfe, 0x00, 0x00, 0x00, 0x07, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0x00, 0x00, 0x00, 0x0f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0x00, 0x00, 0x00, 0x1f, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0x80, 0x00, 0x00, 0x3f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xc0, 0x00, 0x00, 0x7f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xc0, 0x00, 0x00, 0x7f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xe0, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xf0, 0x00, 0x01, 0xff, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0xf8, 0x0e, 0x03, 0xff, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xff, 0xff, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xff, 0xff, 0xff, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+
+
+
+void setup() {
+  dht.begin();
+  Serial.begin(115200);
+  // Initialize the output variables as outputs
+  pinMode(output19, OUTPUT);
+  pinMode(output18, OUTPUT);
+  // Set outputs to LOW
+  digitalWrite(output19, LOW);
+  digitalWrite(output18, LOW);
+
+  // Connect to Wi-Fi network with SSID and password
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  // Print local IP address and start web server
+  Serial.println("");
+  Serial.println("WiFi connected.");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  server.begin();
+//  server.on("/", handleRoot);
+
+if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+ // display.display(); //Display logo
+ // Draw bitmap on the screen
+   display.clearDisplay();
+  display.drawBitmap(0, 0, image_data_20190410_114707, 128, 64, 1);
+  display.display();
+  delay(2000); 
+  display.clearDisplay();
+  
+}
+
+void loop(){
+  WiFiClient client = server.available();   // Listen for incoming clients
+  //readDHTTemperature(); readDHTHumidity();
+float tf = dht.readTemperature(true); 
+float tc = dht.readTemperature();
+String t;
+t ="";
+t += tc;
+t += "";
+float hu = dht.readHumidity();
+String h;
+h ="";
+h += hu;
+h += "";
+
+
+display.clearDisplay();
+ oledDisplayHeader();
+ 
+
+ oledDisplay(3,5,28,hu,"%");
+ oledDisplay(2,70,16,tc,"C");
+ oledDisplay(2,70,44,tf,"F");
+
+ 
+//Serial.println(it);
+
+  if (client) {                             // If a new client connects,
+    currentTime = millis();
+    previousTime = currentTime;
+    Serial.println("New Client.");          // print a message out in the serial port
+    String currentLine = "";                // make a String to hold incoming data from the client
+    while (client.connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
+      currentTime = millis();
+      if (client.available()) {             // if there's bytes to read from the client,
+        char c = client.read();             // read a byte, then
+        Serial.write(c);                    // print it out the serial monitor
+        header += c;
+        if (c == '\n') {                    // if the byte is a newline character
+          // if the current line is blank, you got two newline characters in a row.
+          // that's the end of the client HTTP request, so send a response:
+          if (currentLine.length() == 0) {
+            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+            // and a content-type so the client knows what's coming, then a blank line:
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-type:text/html");
+            client.println("Connection: close");
+            client.println();
+            
+            // turns the GPIOs on and off
+            if (header.indexOf("GET /19/on") >= 0) {
+              Serial.println("DC Supply on");
+              display.clearDisplay();
+              display.setCursor(10,1);
+              display.setTextSize(2);
+              display.print("CORECHAMP");
+              display.setCursor(10,25);
+              display.setTextSize(2);
+              display.print("DC SUPPLY");
+              display.setCursor(55,45);
+              display.setTextSize(2);
+              display.print("ON");
+              output19State = "on";
+              digitalWrite(output19, HIGH);
+            } else if (header.indexOf("GET /19/off") >= 0) {
+              Serial.println("DC Supply off");
+              display.clearDisplay();
+               display.setCursor(10,1);
+               display.setTextSize(2);
+               display.print("CORECHAMP");
+               display.setCursor(10,25);
+               display.setTextSize(2);
+               display.print("DC SUPPLY");
+               display.setCursor(50,45);
+               display.setTextSize(2);
+               display.print("OFF");
+              output19State = "off";
+              digitalWrite(output19, LOW);
+            } else if (header.indexOf("GET /18/on") >= 0) {
+              Serial.println("AC Supply on");
+              display.clearDisplay();
+              display.setCursor(10,1);
+              display.setTextSize(2);
+              display.print("CORECHAMP");
+              display.setCursor(10,25);
+              display.setTextSize(2);
+              display.print("AC SUPPLY");
+              display.setCursor(55,45);
+              display.setTextSize(2);
+              display.print("ON");
+              output18State = "on";
+              digitalWrite(output18, HIGH);
+            } else if (header.indexOf("GET /18/off") >= 0) {
+              Serial.println("AC Supply off");
+              display.clearDisplay();
+              display.setCursor(10,1);
+              display.setTextSize(2);
+              display.print("CORECHAMP");
+              display.setCursor(10,25);
+              display.setTextSize(2);
+              display.print("AC SUPPLY");
+              display.setCursor(50,45);
+              display.setTextSize(2);
+              display.print("OFF"); 
+              output18State = "off";
+              digitalWrite(output18, LOW);
+            }
+
+
+
+             pinStatePrevious = pinStateCurrent; // store old state
+    pinStateCurrent = digitalRead(sensor_pin);   // read new state
+                         
+    Serial.print(pinStateCurrent);
+    if (pinStatePrevious == LOW && pinStateCurrent == HIGH) {   // pin state change: LOW -> HIGH 
+    Serial.println("Motion detected!");              
+    Serial.println("Motion detected!");
+    output2State = "Motion Detected";  
+    display.clearDisplay();
+    display.setCursor(10,1);
+    display.setTextSize(2);
+    display.print("CORECHAMP");
+    delay(100);
+    display.setCursor(035,25);
+    display.setTextSize(2);
+    display.print("MOTION");
+    display.setCursor(15,50);
+    display.setTextSize(2);
+    display.print("DETECTED");  
+    delay(1000);
+    }    
+    else if (pinStatePrevious == HIGH && pinStateCurrent == LOW) {   // pin state change: HIGH -> LOW
+     
+     Serial.println("Motion stopped!");
+     output2State = "Motion Ended"; 
+       
+   }
+
+   
+            
+            // Display the HTML web page
+            client.println("<html><head><meta http-equiv='refresh' content='4'/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><link rel=\"icon\" href=\"data:,\"><style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}.value { font-size: 1.3rem; }.units { font-size: 1.2rem; vertical-align:bottom;}.button { background-color: #4CAF50; border: none; color: white; padding: 16px 20px;text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}.button2 {background-color: #555555;}</style></head><body><div style='position : relative; height: 606px;'>");
+            client.println("<div style='text-align: center;height : 100px; background-color:orange;'><div style='height : 50px; width: 150px; float :left;margin-left:25px;'><img src='https://www.corechamp.in/wp-content/uploads/2022/10/Corechamp_logo.png' alt='logo' style='height:70px; width:250px;'></div>");
+            client.println("<div style='color: white;height : 50px; width: 500px; float :left;margin-top:20px;margin-left:250px;text-align:center;'><h1>IOT HOME KIT</h1></div></div>");
+           
+            client.println("<div style='height : 250px;'><div style='position:absolute;height : 250px; width : 300px; margin-left: 260px;'><div style = 'position:absolute; height:50px;width:190px; margin-left:80px;margin-top:60px;'>");
+           
+            client.println("<p><b>Temprature :</b>");
+            client.println("<span class=\"value\">"+t+" </span>");
+            client.println("<sup class=\"units\">&deg;C</sup>");
+            client.println("</p></div>");
+            client.println("<div style = 'position:absolute; height:50px; width: 50px; margin-top: 60px; margin-left:10px;'><img src='https://runningmagazine.ca/wp-content/uploads/2019/08/gettyimages-1002295536-170667a.jpg' alt='temp' style='height: 50px; width:50px;'></div>");
+            client.println("<br><br><div style = 'position:absolute; height:50px;width:170px; margin-left:80px;margin-top:100px;'><p><b>Humidity :</b>");
+            client.println("<span class=\"value\">"+h+"</span>");
+            client.println("<sup class='units'>&percnt;</sup>");
+            client.println("</p></div>"); 
+            client.println("<div style = 'position:absolute;height:50px; width: 50px; margin-top: 100px; margin-left:10px;'><img src='https://s8h5c4c9.rocketcdn.me/wp-content/uploads/2023/01/Blue-humidity-icon.jpg' alt='' style='height: 50px; width: 50px;'></div></div>");//padding-bottom: 800px;
+            client.println("<div style='text-align: center;position:absolute;height : 250px;width : 300px;margin-left: 800px;'><h2>MOTION DETECTION</h2><br><br><p><b>MOTION : <span style='color: red;'>"+output2State+"</span></b></p></div></div>");
+            client.println("<div style='height : 250px;'><div style='text-align:center; position:absolute;height : 250px; width : 400px; margin-left: 480px;'>");
+            client.println("<h2>DC & AC SUPPLY CONTROL</h2>");
+            
+          //  client.println("<div style = 'position:absolute; height:30px; width: 30px; margin-left:180px;'>");
+
+           client.println("<p>DC Supply - State " + output19State + "</p>");
+
+            
+            
+            // If the output19State is off, it displays the ON button       
+            if (output19State=="off") {
+              client.println("<p><a href=\"/19/on\"><button class=\"button\">ON</button></a></p>");
+            } else {
+              client.println("<p><a href=\"/19/off\"><button class=\"button button2\">OFF</button></a></p>");
+            } 
+               
+            // Display current state, and ON/OFF buttons for GPIO 18  
+            client.println("<p>AC Supply - State " + output18State + "</p>");
+            // If the output18State is off, it displays the ON button       
+            if (output18State=="off") {
+              client.println("<p><a href=\"/18/on\"><button class=\"button\">ON</button></a></p>");
+            } else {
+              client.println("<p><a href=\"/18/off\"><button class=\"button button2\">OFF</button></a></p>");
+            }
+            client.println("</div></div></div></body></html>");
+            
+            
+            // The HTTP response ends with another blank line
+            client.println();
+            // Break out of the while loop
+            break;
+          } else { // if you got a newline, then clear currentLine
+            currentLine = "";
+          }
+        } else if (c != '\r') {  // if you got anything else but a carriage return character,
+          currentLine += c;      // add it to the end of the currentLine
+        }
+      }
+    }
+    // Clear the header variable
+    header = "";
+    // Close the connection
+    client.stop();
+    Serial.println("Client disconnected.");
+    Serial.println("");
+  }
+  display.display();
+}
+
+float readDHTHumidity() {
+  // Sensor readings may also be up to 2 seconds
+  float h = dht.readHumidity();
+  if (isnan(h)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return -1;
+  }
+  else {
+    Serial.println(h);
+    return h;
+  }
+}
+
+float readDHTTemperature() {
+  // Sensor readings may also be up to 2 seconds
+  // Read temperature as Celsius (the default)
+  float t = dht.readTemperature();
+  if (isnan(t)) {    
+    Serial.println("Failed to read from DHT sensor!");
+    return -1;
+  }
+  else {
+    Serial.println(t);
+    return t;
+  }
+}
+
+void oledDisplayHeader(){
+ display.setTextSize(1);
+ display.setTextColor(WHITE);
+ display.setCursor(0, 0);
+ display.print("Humidity");
+ display.setCursor(60, 0);
+ display.print("Temperature");
+}
+void oledDisplay(int size, int x,int y, float value, String unit){
+ int charLen=12;
+ int xo=x+charLen*3.2;
+ int xunit=x+charLen*3.6;
+ int xval = x; 
+ display.setTextSize(size);
+ display.setTextColor(WHITE);
+ 
+ if (unit=="%"){
+   display.setCursor(x, y);
+   display.print(value,0);
+   display.print(unit);
+ } else {
+   if (value>99){
+    xval=x;
+   } else {
+    xval=x+charLen;
+   }
+   display.setCursor(xval, y);
+   display.print(value,0);
+   display.drawCircle(xo, y+2, 2, WHITE);  // print degree symbols (  )
+   display.setCursor(xunit, y);
+   display.print(unit);
+ }
+}
