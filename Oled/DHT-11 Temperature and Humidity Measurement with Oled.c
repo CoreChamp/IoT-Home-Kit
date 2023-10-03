@@ -15,7 +15,7 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
-DHT HT(DHT11Pin,DHTType);
+DHT DHT(DHT11Pin,DHTType);
 float humi;
 float tempC;
 float tempF;
