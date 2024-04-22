@@ -1,1 +1,103 @@
+#define BLYNK_TEMPLATE_ID "TMPL32W6d8OZr"
+#define BLYNK_TEMPLATE_NAME "IOT Home"
+#define BLYNK_AUTH_TOKEN "n6cTDB0xQwiAiiHV_2JiuN9hiSp9sxax"
 
+#define BLYNK_PRINT Serial
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include "DHT.h"
+// You  get Auth Token in the Blynk App.
+// Go to the Project Settings (nut icon).
+char auth[] = "n6cTDB0xQwiAiiHV_2JiuN9hiSp9sxax";
+
+// Your WiFi credentials.
+// Set password to "" for open networks.
+char ssid[] = "RISE 2.";
+char pass[] = "admin@cgc";
+
+#define DHTTYPE DHT11
+#define DHTPIN 4
+
+DHT dht(DHTPIN, DHTTYPE);
+BlynkTimer timer;
+int airquality;
+int airqualityPin=5;
+int motionsensorPin=2;
+int motion;
+int relay1=18;
+int relay2=19;
+BLYNK_WRITE(V5){
+  int pinvalue=param.asInt();
+  digitalWrite(relay1,pinvalue);
+}
+BLYNK_WRITE(V6){
+  int pinvalue=param.asInt();
+  digitalWrite(relay2,pinvalue);
+}
+
+void sendSensor()
+{
+  float h = dht.readHumidity();
+  float t = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+  // You can send any value at any time.
+  // Please don't send more that 10 values per second.
+  Blynk.virtualWrite(V0, t);
+  Blynk.virtualWrite(V1, h);
+  Serial.println(t);
+}
+
+void sendairquality(){
+ int airqualityValue = digitalRead(airqualityPin);
+
+  if(airqualityValue==0){
+     airquality=1;
+     Serial.println(airqualityValue);
+  }
+  else{
+     airquality=0;
+     Serial.println(airqualityValue);
+  }
+  
+}
+void sendmotion(){
+ int motionsensorValue = digitalRead(motionsensorPin);
+
+  if(motionsensorValue==1){
+     motion=1;
+     Serial.println("motion");
+  }
+  else{
+     motion=0;
+     Serial.println("no mation");
+  }
+  delay(1000);
+}
+
+void setup()
+{
+  // Debug console
+  Serial.begin(115200);
+  dht.begin();
+  pinMode(relay1,OUTPUT);
+  pinMode(relay2,OUTPUT);
+  timer.setInterval(100L, sendSensor);
+   timer.setInterval(100L,sendairquality);
+  timer.setInterval(100L,sendmotion);
+  Blynk.begin(auth, ssid, pass);
+}
+
+void loop()
+{
+  Blynk.run();
+  //Blynk.virtualWrite(V5,  relay1);
+   Blynk.virtualWrite(V4,  motion);
+   Blynk.virtualWrite(V3, airquality);
+  delay(100);
+  timer.run();
+}
